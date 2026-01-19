@@ -77,6 +77,7 @@ class RLHFMegatronArgumentsMixin:
     vllm_enable_prefix_caching: bool = True
     vllm_gpu_memory_utilization: float = 0.9
     vllm_tensor_parallel_size: int = 1
+    vllm_enable_lora: bool = False
     vllm_max_model_len: Optional[int] = None
     vllm_enforce_eager: bool = False
     vllm_limit_mm_per_prompt: Optional[Union[dict, str]] = None  # '{"image": 5, "video": 2}'
@@ -418,7 +419,7 @@ class MegatronArguments(ExtraMegatronArguments):
     calculate_per_token_loss: Optional[bool] = None
     use_flash_attn: bool = False
     attention_backend: str = 'flash'  # flash, fused, unfused, local, auto
-    optimizer: Literal['adam', 'sgd'] = 'adam'
+    optimizer: Literal['adam', 'sgd', 'muon', 'dist_muon'] = 'adam'
     optimizer_cpu_offload: bool = False
     optimizer_offload_fraction: float = 1.
     use_precision_aware_optimizer: bool = False
@@ -446,6 +447,16 @@ class MegatronArguments(ExtraMegatronArguments):
     adam_beta2: float = 0.95
     adam_eps: float = 1e-8
     sgd_momentum: float = 0.9
+
+    # muon
+    muon_momentum: float = 0.9
+    muon_no_split_qkv: bool = False
+    muon_use_nesterov: bool = False
+    muon_scale_mode: str = "spectral"
+    muon_fp32_matmul_prec: str = "medium"
+    muon_num_ns_steps: int = 5
+    muon_tp_mode: str = "blockwise"
+    muon_extra_scale_factor: float = 1.0
 
     # checkpoint
     save: Optional[str] = None
@@ -594,6 +605,12 @@ class MegatronArguments(ExtraMegatronArguments):
     # evaluate
     eval_iters: int = -1
     eval_interval: Optional[int] = None
+
+    # profiling
+    profile: bool = False
+    profile_step_start: int = 10
+    profile_step_end: int = 20
+    profile_ranks: List[int] = field(default_factory=lambda: [0])
 
     # other
     seed: int = 42

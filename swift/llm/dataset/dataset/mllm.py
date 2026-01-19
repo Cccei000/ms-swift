@@ -1345,3 +1345,43 @@ register_dataset(
         ],
         preprocess_func=Geometry3KPreprocessor(),
         tags=['multi-modal', 'en', 'math']))
+
+
+class HuiliuPreprocessor(ResponsePreprocessor):
+
+    def preprocess(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        row['solution'] = row['response']
+        row['query'] = ("<video>\n请一步步地观察和分析视频中这件翡翠手镯，并给出估价。"
+                        "你需要综合尺寸、水种、色泽、工艺款式、瑕疵等角度，进行全面地思考，并调整你的估价直至准确。"
+                        "请在<think> </think>中给出你的思考过程，最后在<price> </price>中给出估价的唯一确切数值。"
+                        )
+        row['system'] = ("你是一位资深玉石鉴定专家，能通过视频对玉石进行估价。为了提高估价的准确性，你需要在给出最终估价之前，"
+                         "进行一系列观察、分析和思考，不断调整你的估计，直到给出确凿的估价。"
+                         "在你的回答中，你需要以<think>开始你的思考，并以</think>结束思考，之后在<price> </price>包裹中给出你的最终估价数值。"
+                         )
+        return super().preprocess(row)
+
+
+register_dataset(
+    DatasetMeta(
+        dataset_path='/home/ubuntu/data/datasets/bracelet/sft_data_b0_train.json',
+        dataset_name='huiliu_train',
+        preprocess_func=HuiliuPreprocessor(),
+    )
+)
+
+register_dataset(
+    DatasetMeta(
+        dataset_path='/home/ubuntu/data/datasets/bracelet/rl_data_b0_train.json',
+        dataset_name='huiliu_train_rl',
+        preprocess_func=HuiliuPreprocessor(),
+    )
+)
+
+register_dataset(
+    DatasetMeta(
+        dataset_path='/home/ubuntu/data/datasets/bracelet/sft_data_b0_eval.json',
+        dataset_name='huiliu_eval',
+        preprocess_func=HuiliuPreprocessor(),
+    )
+)

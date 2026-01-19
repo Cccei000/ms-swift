@@ -6,6 +6,7 @@ import textwrap
 from collections import Counter
 from copy import deepcopy
 from typing import Dict, List, Union
+import math
 
 import json
 import torch
@@ -903,6 +904,102 @@ TO CUSTOMIZE REWARD MODEL:
 
 For GenRM you can refer to swift/llm/plugin/rm_plugin/GenRMPlugin
 """
+
+
+class HuiliuPriceDistanceReward(ORM):
+    def __init__(self):
+        self.format_rule = r"<price>.*?</price>"
+        self.price_rule = r"\d+(?:\.\d+)?"
+        self.cot_rule = r'^<think>.*?</think>\s*<price>.*?</price>(?![\s\S])'
+        self.base_price = [10, 12, 20, 35, 45, 55, 65, 75, 85]
+        self.price_list = []
+        for i in range(5):
+            for price in self.base_price:
+                self.price_list.append(10 ** i * price)
+        self.price_to_choice = {}
+        for i in range(len(self.price_list)):
+            if i > 1 and i < len(self.price_list) - 2:
+                self.price_to_choice[int(self.price_list[i])] = self.price_list[i - 2: i + 3]
+        logger.info(f"{self.price_to_choice=}")                
+
+
+    def __call__(self, completions, solution, **kwargs):
+        rewards = []
+        for comp, solu in zip(completions, solution):
+            rewards.append(self.get_single_reward(comp, solu))
+        return rewards
+
+    def get_single_reward(self, completion, output):
+        gt = self.find_price_tag(output)
+        assert gt is not None
+        gt = self.find_price_in_tag(gt)
+        assert gt is not None
+
+        reward = 1 if self.cot_format_reward(completion) else 0
+        ans = None
+        if reward == 1:
+            ans = self.find_price_tag(completion)
+            if ans is not None:
+                pred = self.find_price_in_tag(ans)
+                if pred is not None:
+                    reward += self.lookup_reward(pred, gt)
+        logger.info(f"{gt=}, {ans=}, {reward=}")
+        return reward
+
+    # def dist_reward(self, gt, pred):
+    #     return 1 - (abs(gt - pred) / max(gt, pred))
+
+    # def dynamic_weight(self, gt):
+    #     if gt >= 100000:
+    #         return 0.2
+    #     if gt >= 10000:
+    #         return 0.4
+    #     if gt >= 1000:
+    #         return 0.4
+    #     return 0.5
+    
+    # def combined_reward(self, pred, gt, base=10000, default_weight=1, dynamic_weight=None):
+    #     first_term = -abs(pred - gt) / gt
+    #     second_term = -abs(pred - gt) / base
+    #     if dynamic_weight is not None:
+    #         weight = dynamic_weight(gt)
+    #     else:
+    #         weight = default_weight
+    #     return math.exp(first_term + weight * second_term)
+
+    def lookup_reward(self, pred, gt):
+        opts = self.price_to_choice[gt]
+        assert len(opts) == 5 and opts[2] == gt
+        if pred < opts[0] or pred > opts[-1]:
+            return 0
+        elif (pred >= opts[0] and pred < opts[1]) or (pred <= opts[-1] and pred > opts[-2]):
+            return 0.25
+        elif (pred >= opts[1] and pred < opts[2]) or (pred <= opts[-2] and pred > opts[2]):
+            return 0.5
+        elif pred == gt:
+            return 1
+        else:
+            raise ValueError(f"{gt=}, {pred=}")
+
+    def cot_format_reward(self, pred):
+        res = re.match(self.cot_rule, pred, re.DOTALL | re.MULTILINE)
+        return res
+
+    def find_price_tag(self, text):
+        res = re.findall(self.format_rule, text, re.DOTALL)
+        if len(res) == 0:
+            return None
+        else:
+            return res[-1]
+
+    def find_price_in_tag(self, text):
+        match = re.search(self.price_rule, text)
+        try:
+            return float(match.group())
+        except:
+            return None
+
+orms['huiliu'] = HuiliuPriceDistanceReward
 
 
 class CustomizedRMPlugin:

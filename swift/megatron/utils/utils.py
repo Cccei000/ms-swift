@@ -317,6 +317,12 @@ def forward_step_helper(model, inputs, dtype=None):
 
 def get_padding_to(args):
     padding_to = None
+    if args.packing and args.packing_length and args.force_padding:
+        padding_to = args.packing_length
+        return padding_to
+    if args.max_length and not args.padding_free and args.force_padding:
+        padding_to = args.max_length
+        return padding_to
     if args.tensor_model_parallel_size > 1 and args.sequence_parallel:
         padding_to = args.tensor_model_parallel_size
     if args.context_parallel_size > 1:

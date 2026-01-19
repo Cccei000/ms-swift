@@ -106,6 +106,7 @@ class BaseArguments(CompatArguments, GenerationArguments, QuantizeArguments, Dat
     # dataset
     packing: bool = False
     packing_length: Optional[int] = None
+    force_padding: bool = False
     packing_num_proc: int = 1
     lazy_tokenize: Optional[bool] = None
     custom_register_path: List[str] = field(default_factory=list)  # .py
