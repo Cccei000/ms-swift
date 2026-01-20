@@ -317,7 +317,7 @@ class MegatronGRPOTrainer(MegatronRolloutMixin, MegatronRLHFTrainer):
         encoded_batch = to_device(template.data_collator(encoded_list, padding_to=get_padding_to(args)), device)
 
         labels = encoded_batch['labels']
-        batch_size = len(encoded_list)
+        batch_size = len(micro_batch_data)
 
         truncated_mask = torch.tensor([b['is_truncated'] for b in micro_batch_data],
                                         dtype=torch.bool,
@@ -1034,7 +1034,7 @@ class MegatronGRPOTrainer(MegatronRolloutMixin, MegatronRLHFTrainer):
             kl_list.append(sample_kl)
 
         # Concatenate all KL values and gather across ranks
-        kl_values = torch.cat(kl_list, dim=0, device=self.device)
+        kl_values = torch.cat(kl_list, dim=0).to(self.device)
         kl_values = gather(kl_values)
 
         return kl_values
